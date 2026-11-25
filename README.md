@@ -5,148 +5,144 @@
 [![Java](https://img.shields.io/badge/Java-21-orange?logo=openjdk&logoColor=white)](https://adoptium.net/)
 [![Spring Framework](https://img.shields.io/badge/Spring%20Context-6.2.19-6DB33F?logo=spring&logoColor=white)](https://spring.io/)
 [![Maven](https://img.shields.io/badge/Build-Maven-C71A36?logo=apachemaven&logoColor=white)](https://maven.apache.org/)
+[![OS](https://img.shields.io/badge/Environnement-Windows%2011-0078D6?logo=windows11&logoColor=white)]()
 
-*Projet pédagogique illustrant le principe d'Inversion de Contrôle (IoC) et le passage progressif d'un couplage fort vers un couplage faible avec Java et Spring.*
+**Sujet :** Application Java **fermée à la modification et ouverte à l'extension** — Couplage faible & Injection des dépendances (Statique, Dynamique par réflexion, Spring XML).
 
 </div>
 
 ---
 
-## Sommaire
+## 📑 Sommaire
 
-- [Architecture du projet](#-architecture-du-projet)
-- [Structure des fichiers](#-structure-des-fichiers)
-- [Galerie des captures d'écran](#-galerie-des-captures-décran)
-  - [1. Vue d'ensemble de l'architecture IoC](#1-vue-densemble-de-larchitecture-ioc)
-  - [2. Instanciation statique (`Pres1`)](#2-instanciation-statique-pres1)
-  - [3. Instanciation dynamique par réflexion (`Pres2`)](#3-instanciation-dynamique-par-réflexion-pres2)
-  - [4. Injection de dépendances avec Spring XML (`PresSpring`)](#4-injection-de-dépendances-avec-spring-xml-presspring)
-- [Comparatif des 3 approches](#-comparatif-des-3-approches)
-- [Prérequis & Exécution](#-prérequis--exécution)
-- [Captures personnelles supplémentaires](#-captures-personnelles-supplémentaires)
-
----
-
-## Architecture du projet
-
-L'application est découpée en trois couches indépendantes reliées par des interfaces afin de garantir la maintenabilité et l'évolutivité du code :
-
-1. **Couche DAO (`dao`)** : définit le contrat `IDao` (`getData()`) et son implémentation `DaoImpl` qui retourne `23.0`.
-2. **Couche Métier (`metier`)** : définit le contrat `IMetier` (`calcul()`) et son implémentation `MetierImpl` qui reçoit une dépendance `IDao` via `setDao(IDao dao)` et retourne `data * 10` (`230.0`).
-3. **Couche Présentation (`presentation`)** : met en œuvre trois stratégies d'instanciation et d'injection de dépendances (`Pres1`, `Pres2`, `PresSpring`).
+1. [Objectif](#-1-objectif)
+2. [Architecture du projet](#-2-architecture-du-projet)
+3. [Structure des fichiers](#-3-structure-des-fichiers)
+4. [Réalisation étape par étape](#-4-réalisation-étape-par-étape)
+   - [Couches DAO & Métier (`IDao`, `DaoImpl`, `IMetier`, `MetierImpl`)](#couches-dao--métier)
+   - [a) Injection par instanciation statique (`Pres1`)](#a-par-instanciation-statique-pres1)
+   - [b) Injection par instanciation dynamique (`Pres2`)](#b-par-instanciation-dynamique-pres2)
+   - [c) Injection avec Spring IoC XML (`PresSpring`)](#c-avec-le-framework-spring-xml-presspring)
+5. [Tableau récapitulatif](#-5-tableau-récapitulatif)
+6. [Prérequis & Exécution](#-6-prérequis--exécution)
+7. [Conclusion](#-7-conclusion)
 
 ---
 
-## Structure des fichiers
+## 🎯 1. Objectif
 
-```text
-TP-IOC-Spring/
-├── pom.xml                                  # Configuration Maven (Java 21, spring-context 6.2.19)
-├── screenshots/                             # Captures d'écran organisées pour le README
-│   ├── 01-architecture-ioc.png
-│   ├── 02-pres1-statique.png
-│   ├── 03-pres2-dynamique.png
-│   └── 04-pres3-spring-xml.png
-└── src/main/
-    ├── java/
-    │   ├── dao/
-    │   │   ├── IDao.java                    # Interface d'accès aux données
-    │   │   └── DaoImpl.java                 # Implémentation retournant 23.0
-    │   ├── metier/
-    │   │   ├── IMetier.java                 # Interface métier
-    │   │   └── MetierImpl.java              # Calcul métier (data * 10) avec injection par setter
-    │   ├── presentation/
-    │   │   ├── Pres1.java                   # Instanciation statique (new)
-    │   │   ├── Pres2.java                   # Instanciation dynamique (réflexion + config.txt)
-    │   │   └── PresSpring.java              # Conteneur IoC Spring (ClassPathXmlApplicationContext)
-    │   └── org/example/
-    │       └── Main.java                    # Classe modèle initiale
-    └── resources/
-        ├── config.txt                       # Noms des classes pour Pres2
-        └── config.xml                       # Déclaration des beans Spring pour PresSpring
-```
+Montrer comment concevoir une application Java **fermée à la modification** et **ouverte à l'extension**, facilitant la maintenance et l'évolution :
+
+1. **Le couplage faible** : dépendre des *interfaces* (`IDao`, `IMetier`) et non des implémentations concrètes.
+2. **L'injection des dépendances** : un objet reçoit ses dépendances de l'extérieur (via `setDao(...)`) au lieu de les instancier lui-même avec `new`.
+
+Avec l'**Inversion de Contrôle (IoC)**, le développeur se concentre sur la logique **métier**, tandis que le framework (**Spring**) gère la création des objets et le câblage technique.
 
 ---
 
-## Galerie des captures d'écran
-
-### 1. Vue d'ensemble de l'architecture IoC
+## 🏗️ 2. Architecture du projet
 
 ![Architecture IoC et flux de dépendances](screenshots/01-architecture-ioc.png)
 
 ---
 
-### 2. Instanciation statique (`Pres1`)
+## 📂 3. Structure des fichiers
 
-Instanciation directe des classes concrètes avec `new` (`DaoImpl`, `MetierImpl`) puis injection manuelle via `metier.setDao(dao)`.
-
-| Classe exécutée | Résultat attendu |
-| :--- | :--- |
-| `presentation.Pres1` | `Résultat du calcul : 230.0` |
-
-![Exécution de Pres1 - Instanciation statique](screenshots/02-pres1-statique.png)
-
----
-
-### 3. Instanciation dynamique par réflexion (`Pres2`)
-
-Lecture des noms complets des classes depuis `src/main/resources/config.txt`, chargement dynamique via `Class.forName(...)` et invocation de `setDao` par réflexion (`java.lang.reflect.Method`).
-
-| Classe exécutée | Configuration | Résultat attendu |
-| :--- | :--- | :--- |
-| `presentation.Pres2` | `src/main/resources/config.txt` | `Résultat du calcul par instanciation dynamique : 230.0` |
-
-![Exécution de Pres2 - Instanciation dynamique](screenshots/03-pres2-dynamique.png)
-
----
-
-### 4. Injection de dépendances avec Spring XML (`PresSpring`)
-
-Délégation de l'instanciation et du câblage des beans au conteneur léger Spring via `ClassPathXmlApplicationContext("config.xml")`.
-
-| Classe exécutée | Configuration | Résultat attendu |
-| :--- | :--- | :--- |
-| `presentation.PresSpring` | `src/main/resources/config.xml` | `Résultat du calcul avec Spring : 230.0` |
-
-![Exécution de PresSpring - Spring IoC XML](screenshots/04-pres3-spring-xml.png)
+```text
+TP-IOC-Spring/
+├── pom.xml                                  # Maven (Java 21, spring-context 6.2.19)
+├── screenshots/                             # Captures Windows (architecture, code & console)
+│   ├── 01-architecture-ioc.png
+│   ├── 02-couches-dao-metier.png
+│   ├── 03-pres1-statique.png
+│   ├── 04-pres2-dynamique.png
+│   └── 05-pres3-spring-xml.png
+└── src/main/
+    ├── java/
+    │   ├── dao/
+    │   │   ├── IDao.java                    # Interface d'accès aux données (getData)
+    │   │   └── DaoImpl.java                 # Implémentation retournant 23.0
+    │   ├── metier/
+    │   │   ├── IMetier.java                 # Interface métier (calcul)
+    │   │   └── MetierImpl.java              # Calcul métier (data * 10) avec setDao(IDao)
+    │   ├── presentation/
+    │   │   ├── Pres1.java                   # Instanciation statique (new)
+    │   │   ├── Pres2.java                   # Instanciation dynamique (réflexion + config.txt)
+    │   │   └── PresSpring.java              # Conteneur IoC Spring (config.xml)
+    │   └── org/example/
+    │       └── Main.java                    # Point d'entrée modèle
+    └── resources/
+        ├── config.txt                       # Configuration des classes pour Pres2
+        └── config.xml                       # Configuration des beans Spring pour PresSpring
+```
 
 ---
 
-## Comparatif des 3 approches
+## 🛠️ 4. Réalisation étape par étape
 
-| Critère | `Pres1` (Statique) | `Pres2` (Réflexion) | `PresSpring` (Spring IoC) |
+### Couches DAO & Métier
+
+- **`IDao` / `DaoImpl`** : définit le contrat `getData()` et retourne la valeur `23.0`.
+- **`IMetier` / `MetierImpl`** : déclare un attribut privé de type interface `IDao` (non initialisé afin d'éviter le couplage fort), injecté via `setDao(IDao dao)`. La méthode `calcul()` retourne `dao.getData() * 10` soit **`230.0`**.
+
+![Couches DAO et Métier](screenshots/02-couches-dao-metier.png)
+
+---
+
+### a) Par instanciation statique (`Pres1`)
+
+Dans `Pres1.java`, les objets `DaoImpl` et `MetierImpl` sont instanciés directement avec `new`, puis liés via `metier.setDao(dao)`.
+
+- **Couches DAO & Métier** : fermées à la modification et ouvertes à l'extension.
+- **Couche Présentation** : **encore ouverte à la modification** (changer d'implémentation impose de modifier le code Java et recompiler).
+
+![Exécution de Pres1 - Instanciation statique](screenshots/03-pres1-statique.png)
+
+---
+
+### b) Par instanciation dynamique (`Pres2`)
+
+Dans `Pres2.java`, les noms complets des classes sont lus depuis `src/main/resources/config.txt`, instanciés dynamiquement avec `Class.forName(...).getDeclaredConstructor().newInstance()`, et reliés par réflexion (`getMethod("setDao", ...).invoke(...)`).
+
+- La couche présentation devient **fermée à la modification et ouverte à l'extension** : il suffit de modifier `config.txt` sans toucher au code Java.
+
+![Exécution de Pres2 - Instanciation dynamique](screenshots/04-pres2-dynamique.png)
+
+---
+
+### c) Avec le framework Spring XML (`PresSpring`)
+
+Dans `PresSpring.java`, le conteneur Spring (`ClassPathXmlApplicationContext("config.xml")`) lit la déclaration des beans (`dao` et `metier`), les instancie et injecte automatiquement la dépendance `dao` via `<property name="dao" ref="dao"/>`.
+
+![Exécution de PresSpring - Spring IoC XML](screenshots/05-pres3-spring-xml.png)
+
+---
+
+## 📊 5. Tableau récapitulatif
+
+| Technique | Qui crée les objets ? | Changer d'implémentation DAO | Couche présentation fermée à la modification ? |
 | :--- | :--- | :--- | :--- |
-| **Type de couplage** | Couplage fort | Couplage faible | Couplage faible |
-| **Source de configuration** | Code Java (`new`) | Fichier texte `config.txt` | Fichier XML `config.xml` |
-| **Mécanisme d'injection** | Appel direct `setDao()` | `Method.invoke(...)` | Conteneur Spring (`<property>`) |
-| **Évolutivité** | Recompilation nécessaire | Modification de `config.txt` | Modification de `config.xml` |
+| **Instanciation statique (`Pres1`)** | Le développeur (`new`) | Modifier le code Java et recompiler | Non |
+| **Instanciation dynamique (`Pres2`)** | Le développeur (réflexion) | Modifier `src/main/resources/config.txt` | Oui |
+| **Spring XML (`PresSpring`)** | Le conteneur Spring | Modifier `src/main/resources/config.xml` | Oui |
 
 ---
 
-## Prérequis & Exécution
+## ⚙️ 6. Prérequis & Exécution
 
-- **JDK 21**
-- **Apache Maven 3.9+** (ou via IntelliJ IDEA)
+- **JDK 21** (`java -version`)
+- **Apache Maven 3.9+** ou **IntelliJ IDEA (Windows)**
 
-```bash
-# 1. Cloner le dépôt
+```powershell
 git clone https://github.com/laqsour/TP-IOC-Spring.git
 cd TP-IOC-Spring
-
-# 2. Compiler le projet
 mvn compile
 ```
 
-Exécutez ensuite la classe souhaitée depuis votre IDE (`Pres1`, `Pres2` ou `PresSpring`) ou via Maven (`exec:java`).
+Exécutez ensuite au choix `presentation.Pres1`, `presentation.Pres2` ou `presentation.PresSpring` depuis IntelliJ IDEA (bouton ▶) ou en ligne de commande.
 
 ---
 
-## Captures personnelles supplémentaires
+## 🏁 7. Conclusion
 
-> Vous pouvez ajouter vos propres captures d'écran (ex. IntelliJ IDEA, exécutions locales) dans le dossier [`screenshots/`](screenshots/) puis décommenter ou compléter le tableau ci-dessous :
-
-```markdown
-| Capture IDE / Structure | Exécution console locale |
-| :---: | :---: |
-| ![Capture IDE](screenshots/votre-capture-ide.png) | ![Console locale](screenshots/votre-capture-console.png) |
-```
+Pour concevoir une application **fermée à la modification et ouverte à l'extension**, il faut combiner le **couplage faible** (dépendre uniquement d'interfaces) et l'**injection des dépendances**. Avec Spring IoC, la création et le câblage des objets sont délégués au conteneur, permettant au développeur de se concentrer sur le code métier.
